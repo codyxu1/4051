@@ -1,0 +1,102 @@
+---
+title: "ice 2"
+author: "Sicheng Xu"
+date: "3/21/2022"
+output: html_document
+---
+
+library(tidyverse)
+library(tm)
+Eval <- read_csv('/Users/Codyxu/R/ICE2_data_eval.csv')
+Eval
+
+#Data Cleaning and Wrangling
+evalClean <-  read_csv('/Users/Codyxu/R/ICE2_data_eval.csv')
+evalClean
+
+
+clean_text <- function(text){
+  text <- tolower(text)
+  text <- gsub("[[:digit:]]+", "", text)
+  text <- gsub("[[:punct:]]+", "", text)
+  return(text)
+}
+# cleaning the text
+evalClean$comment <- clean_text(evalClean$comment)
+
+evalClean <- evalClean %>% mutate(id = 1:nrow(evalClean))
+evalClean
+#Organizing Data
+
+commentToken <- evalClean %>% tidytext::unnest_tokens(word, comment) %>% count(id, word)
+commentToken
+
+commentTokens <- commentToken %>%
+  anti_join(tidytext::get_stopwords())
+
+DTM <- commentTokens %>%
+  tidytext::cast_dtm(id, word, n)
+DTM
+#Exploratory Analysis
+
+table(evalClean$eval, evalClean$category)
+
+commentTokens %>% 
+  group_by(word) %>%
+  summarize(occurrence = sum(n)) %>% 
+  arrange(desc(occurrence))
+  
+ # Topic Modeling
+ library(topicmodels)
+LDA <- topicmodels::LDA(DTM, k = 3, control = list(seed = 123))
+LDA_td <- tidytext::tidy(LDA)
+LDA_td
+library(tidytext)
+topTerms <- LDA_td %>%
+  group_by(topic) %>%
+  top_n(7, beta) %>%
+  arrange(topic, -beta)
+
+theme_set(theme_bw())
+
+topTerms %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(term, beta, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free_x") +
+  coord_flip() +
+  scale_x_reordered()
+#Text Classifier
+convert <- function(x) {
+  y <- ifelse(x > 0, 1,0)
+  y <- factor(y, levels=c(0,1), labels=c("No", "Yes"))
+  return(y)
+}
+datanaive <- apply(DTM, 2, convert)
+dtmNaive <- as.data.frame(as.matrix(datanaive))
+
+train_size = floor(0.8*nrow(evalClean))
+set.seed(456)
+picked <- sample(seq_len(nrow(evalClean)),size = train_size)
+
+dtm_train <- dtmNaive[picked,]
+dtm_train_labels <- evalClean$eval[picked]
+
+dtm_test <- dtmNaive[-picked,]
+dtm_test_labels <- evalClean$eval[-picked]
+
+library(e1071)
+library(caret)
+
+nb_classifier <- naiveBayes(dtm_train, dtm_train_labels)
+
+nb_pred = predict(nb_classifier, type = 'class', newdata =  dtm_test)
+
+confusionMatrix(nb_pred, as.factor(dtm_test_labels))
+
+
+
+
+
+
+

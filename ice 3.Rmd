@@ -1,0 +1,38 @@
+---
+title: "ice 3"
+author: "Sicheng Xu"
+date: "3/21/2022"
+output: html_document
+---
+
+library(devtools)
+devtools::install_github("IEDMS/REDM/bkt")
+
+ADL <- read.table(
+  "http://publicifsv.sund.ku.dk/~kach/scaleval_IRT/ADL.txt", 
+  sep=' ', 
+  header = TRUE,
+  na.strings = '.')
+names(ADL)
+comp <- complete.cases(ADL)
+ADL.comp <- ADL[comp,]
+items <- ADL.comp[,-1]
+install.packages("ltm", repos="http://cran.rstudio.com/")
+
+
+library(ltm)
+fit1 <- rasch(items)
+coef(fit1, prob = T, order = T)
+plot(fit1, type = "ICC")
+
+GoF.rasch(fit1, B=99, seed=1862)
+if1 <- item.fit(fit1, 
+                  G = 2, 
+                  FUN = mean, 
+                  simulate.p.value = TRUE, 
+                  B = 99)
+if1
+plot(fit1, type = "IIC")
+plot(fit1, type = "IIC", items=0)
+
+

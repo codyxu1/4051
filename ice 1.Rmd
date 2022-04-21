@@ -1,0 +1,22 @@
+---
+title: "ice 1"
+author: "Sicheng Xu"
+date: "2/13/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+library(sqldf)
+library(babynames)
+
+head(babynames)
+str(babynames)
+
+
+sqldf("select *from babynames where year> 2000 limit 25")
+
+sqldf("select name, sum(n) as NameCount from babynames where year >2000 Group By name Limit 10")
+

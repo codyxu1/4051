@@ -1,0 +1,56 @@
+---
+title: "ice5"
+author: "Sicheng Xu"
+date: "4/21/2022"
+output: html_document
+---
+
+library(datasets)
+data(iris)
+head(iris)
+#MCAR
+iris_MCAR <- iris
+missing_fraction <- 0.3 
+N <- nrow(iris_MCAR)
+is.na(iris_MCAR[sample.int(N, missing_fraction*N), "Sepal.Length"]) <- TRUE
+
+iris_MCAR
+library("missMethods")
+iris_MCAR <- delete_MCAR(iris, 0.3, "Sepal.Length")
+iris_MCAR
+#MAR
+logit <- function(x){log(x/(1-x))}
+invlogit <- function(x){1/(1+exp(-x))}
+m.SW <- mean(iris$Sepal.Width)
+pmiss <- invlogit(iris$Sepal.Width -m.SW + logit(0.3))
+hist(pmiss) 
+
+iris_MAR <- iris
+N <- nrow(iris_MAR)
+is.na(iris_MAR$Sepal.Length[runif(N) < pmiss]) <- TRUE
+iris_MAR
+#Listwise deletion
+
+iris_MCAR_listwise <- iris_MCAR[complete.cases(iris_MCAR),]
+nrow(iris_MCAR_listwise)
+#Pairwise deletion
+mean(iris_MCAR$Sepal.Length, na.rm = TRUE)
+sd(iris_MCAR$Sepal.Length, na.rm = TRUE)
+#Simple imputation
+iris_MCAR_mean <- iris_MCAR
+mi <- mean(iris_MCAR$Sepal.Length, na.rm = TRUE)
+iris_MCAR_mean$Sepal.Length[is.na(iris_MCAR$Sepal.Length)] <- mi
+iris_MCAR_mean
+#Regression Imputation/Conditional Mean Imputation
+
+iris_MAR_regression <- iris_MAR
+lm_model <- lm(Sepal.Length ~ Sepal.Width, iris_MAR_regression)
+summary(lm_model)
+
+iris_MAR_regression$Sepal.Length[is.na(iris_MAR$Sepal.Length)] <- -0.08 * iris_MAR_regression$Sepal.Width[is.na(iris_MAR$Sepal.Length)] + 6.085
+
+iris_MAR_regression
+#Hot-deck imputation or nearest neighbours
+iris_MAR_hotdeck <- iris_MAR
+impute_hot_deck_in_classes(iris_MAR_hotdeck, c("Sepal.Width", "Petal.Length", "Petal.Width", "Species"))
+
